@@ -182,6 +182,10 @@ const conversionResults = computed(() => {
       />
     </div>
   </div>
+
+  <footer>
+    <a href="third-party-licenses.html">サードパーティライセンス</a>
+  </footer>
 </template>
 
 <style scoped>
@@ -274,5 +278,13 @@ const conversionResults = computed(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 0.75rem;
+}
+
+footer {
+  margin-top: 2rem;
+  padding: 1rem 0;
+  text-align: center;
+  font-size: 0.8rem;
+  border-top: 1px solid var(--color-border);
 }
 </style>
