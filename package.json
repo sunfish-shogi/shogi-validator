@@ -2,6 +2,20 @@
   "name": "shogi-validator",
   "private": true,
   "version": "0.0.0",
+  "description": "A validation tool for Shogi",
+  "keywords": [
+    "shogi"
+  ],
+  "homepage": "https://github.com/sunfish-shogi/shogi-validator#readme",
+  "bugs": {
+    "url": "https://github.com/sunfish-shogi/shogi-validator/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunfish-shogi/shogi-validator.git"
+  },
+  "license": "MIT",
+  "author": "Kubo, Ryosuke",
   "type": "module",
   "scripts": {
     "dev": "vite",
