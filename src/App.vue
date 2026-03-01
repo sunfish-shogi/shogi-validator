@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { detectRecordFormat, RecordFormatType } from 'tsshogi'
+import {
+  detectRecordFormat, RecordFormatType,
+  importKIF, importKI2, importCSA, importJKFString,
+  exportKIF, exportKI2, exportCSA, exportJKFString,
+  Record as ShogiRecord, Position as ShogiPosition,
+  type ImmutableRecord,
+} from 'tsshogi'
 import ConversionResult from './components/ConversionResult.vue'
 
 type Format = 'KIF' | 'KI2' | 'CSA' | 'JKF' | 'USI' | 'SFEN' | 'USEN'
 
 interface ValidationResult {
-  format: Format | null
+  format: Format
   valid: boolean
   error: string | null
 }
@@ -17,6 +23,34 @@ const inputText = ref('')
 const detectedEncoding = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const validationResult = ref<ValidationResult | null>(null)
+const parsedRecord = ref<ImmutableRecord | null>(null)
+
+function parseRecord(text: string, type: RecordFormatType): ImmutableRecord | Error {
+  switch (type) {
+    case RecordFormatType.KIF:  return importKIF(text)
+    case RecordFormatType.KI2:  return importKI2(text)
+    case RecordFormatType.CSA:  return importCSA(text)
+    case RecordFormatType.JKF:  return importJKFString(text)
+    case RecordFormatType.USI:  return ShogiRecord.newByUSI(text)
+    case RecordFormatType.USEN: return ShogiRecord.newByUSEN(text)
+    case RecordFormatType.SFEN: {
+      const pos = ShogiPosition.newBySFEN(text)
+      return pos ? new ShogiRecord(pos) : new Error('Invalid SFEN')
+    }
+  }
+}
+
+function convertRecord(record: ImmutableRecord, format: Format): string {
+  switch (format) {
+    case 'KIF':  return exportKIF(record)
+    case 'KI2':  return exportKI2(record)
+    case 'CSA':  return exportCSA(record)
+    case 'JKF':  return exportJKFString(record)
+    case 'USI':  return record.getUSI({ allMoves: true })
+    case 'SFEN': return record.sfen
+    case 'USEN': return record.usen[0]
+  }
+}
 
 async function readFileWithEncoding(file: File): Promise<{ text: string; encoding: string }> {
   const buffer = await file.arrayBuffer()
@@ -38,31 +72,46 @@ async function onFileSelected(event: Event) {
   inputText.value = text
   detectedEncoding.value = encoding
   validationResult.value = null
+  parsedRecord.value = null
 }
 
 function runValidation() {
   const text = inputText.value
   if (!text.trim()) {
     validationResult.value = null
+    parsedRecord.value = null
     return
   }
-  const format = RecordFormatType[detectRecordFormat(text)] as Format
-  validationResult.value = { format, valid: true, error: null }
+  const type = detectRecordFormat(text)
+  const format = RecordFormatType[type] as Format
+  const result = parseRecord(text, type)
+  if (result instanceof Error) {
+    parsedRecord.value = null
+    validationResult.value = { format, valid: false, error: result.message }
+  } else {
+    parsedRecord.value = result
+    validationResult.value = { format, valid: true, error: null }
+  }
 }
 
 function clearAll() {
   inputText.value = ''
   detectedEncoding.value = null
   validationResult.value = null
+  parsedRecord.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
 const conversionResults = computed(() => {
-  if (!validationResult.value?.valid) return []
-  return ALL_FORMATS.map((fmt) => ({
-    format: fmt,
-    content: `（${fmt} 形式への変換は未実装です）`,
-  }))
+  const record = parsedRecord.value
+  if (!record) return []
+  return ALL_FORMATS.map((fmt) => {
+    try {
+      return { format: fmt, content: convertRecord(record, fmt) }
+    } catch (e) {
+      return { format: fmt, content: `（変換エラー: ${e instanceof Error ? e.message : String(e)}）` }
+    }
+  })
 })
 </script>
 
