@@ -184,6 +184,8 @@ const conversionResults = computed(() => {
   </div>
 
   <footer>
+    <a href="https://github.com/sunfish-shogi/shogi-validator" target="_blank" rel="noopener">GitHub</a>
+    <span class="footer-sep">|</span>
     <a href="third-party-licenses.html">サードパーティライセンス</a>
   </footer>
 </template>
@@ -286,5 +288,10 @@ footer {
   text-align: center;
   font-size: 0.8rem;
   border-top: 1px solid var(--color-border);
+}
+
+.footer-sep {
+  margin: 0 0.5rem;
+  color: var(--color-border);
 }
 </style>
