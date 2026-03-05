@@ -154,6 +154,36 @@ export function checkKIF(text: string): KakugyokuCheckResult {
         )
       }
     }
+
+    // Branch marker (+) cross-check with 変化：N手
+    const branchNumbers = new Set<number>()
+    for (const l of lines.slice(separatorIdx + 1)) {
+      const m = l.match(/^変化：(\d+)手$/)
+      if (m?.[1]) branchNumbers.add(parseInt(m[1], 10))
+    }
+
+    const plusNumbers = new Set<number>()
+    for (const l of lines.slice(separatorIdx + 1)) {
+      if (/^ {0,3}\d/.test(l) && l.trimEnd().endsWith('+')) {
+        const m = l.match(/^ *(\d+) /)
+        if (m?.[1]) plusNumbers.add(parseInt(m[1], 10))
+      }
+    }
+
+    if (branchNumbers.size > 0 || plusNumbers.size > 0) {
+      const spurious = [...plusNumbers].filter(n => !branchNumbers.has(n))
+      add(
+        spurious.length === 0 ? 1 : 0,
+        2,
+        `「変化：N手」のない手に「+」が付いています（手数: ${spurious.join('、')}）`,
+      )
+      const missing = [...branchNumbers].filter(n => !plusNumbers.has(n))
+      add(
+        missing.length === 0 ? 1 : 0,
+        2,
+        `分岐があるのに「+」のない手があります（手数: ${missing.join('、')}）`,
+      )
+    }
   }
 
   // 6. Trailing blank line
