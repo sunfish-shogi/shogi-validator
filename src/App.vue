@@ -8,7 +8,7 @@ import {
   type ImmutableRecord,
 } from 'tsshogi'
 import ConversionResult from './components/ConversionResult.vue'
-import { checkKIF, checkKI2 } from './kakugyoku-checker'
+import { checkKIF, checkKI2 } from './kakinoki-checker'
 
 type Format = 'KIF' | 'KI2' | 'CSA' | 'JKF' | 'USI' | 'SFEN' | 'USEN'
 
