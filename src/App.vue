@@ -8,6 +8,7 @@ import {
   type ImmutableRecord,
 } from 'tsshogi'
 import ConversionResult from './components/ConversionResult.vue'
+import { checkKIF, checkKI2 } from './kakugyoku-checker'
 
 type Format = 'KIF' | 'KI2' | 'CSA' | 'JKF' | 'USI' | 'SFEN' | 'USEN'
 
@@ -102,6 +103,21 @@ function clearAll() {
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
+const kakugyokuResult = computed(() => {
+  const vr = validationResult.value
+  if (!vr?.valid) return null
+  if (vr.format === 'KIF') return checkKIF(inputText.value)
+  if (vr.format === 'KI2') return checkKI2(inputText.value)
+  return null
+})
+
+const kakugyokuScoreClass = computed(() => {
+  const score = kakugyokuResult.value?.score ?? 0
+  if (score === 100) return 'kk-score--perfect'
+  if (score >= 80) return 'kk-score--good'
+  return 'kk-score--warn'
+})
+
 const conversionResults = computed(() => {
   const record = parsedRecord.value
   if (!record) return []
@@ -133,7 +149,7 @@ const conversionResults = computed(() => {
           <input
             ref="fileInputRef"
             type="file"
-            accept=".kif,.ki2,.csa,.jkf,.txt"
+            accept=".kif,.kifu,.ki2,.ki2u,.csa,.jkf,.txt"
             @change="onFileSelected"
           />
           ファイルを選択
@@ -168,6 +184,19 @@ const conversionResults = computed(() => {
         <div class="result-detail">{{ validationResult.error }}</div>
       </div>
     </div>
+  </div>
+
+  <!-- 柿木将棋スタイル評価セクション -->
+  <div v-if="kakugyokuResult" class="section">
+    <h2>柿木将棋スタイル評価</h2>
+    <div class="kk-score-row">
+      <span class="kk-score" :class="kakugyokuScoreClass">{{ kakugyokuResult.score }}%</span>
+      <span class="kk-score-label">柿木将棋との一致度</span>
+    </div>
+    <ul v-if="kakugyokuResult.issues.length > 0" class="kk-issues">
+      <li v-for="(issue, i) in kakugyokuResult.issues" :key="i">{{ issue }}</li>
+    </ul>
+    <p v-else class="kk-ok">柿木将棋の出力スタイルと完全に一致しています。</p>
   </div>
 
   <!-- 変換結果セクション -->
@@ -280,6 +309,62 @@ const conversionResults = computed(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 0.75rem;
+}
+
+.kk-score-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.kk-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  min-width: 4rem;
+  text-align: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+}
+
+.kk-score--perfect {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.kk-score--good {
+  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
+
+.kk-score--warn {
+  background-color: var(--color-warning-bg);
+  color: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  .kk-score--warn {
+    color: #f59e0b;
+  }
+}
+
+.kk-score-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.kk-issues {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.8;
+}
+
+.kk-ok {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-success);
 }
 
 footer {
