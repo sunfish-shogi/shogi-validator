@@ -22,6 +22,7 @@ const ALL_FORMATS: Format[] = ['KIF', 'KI2', 'CSA', 'JKF', 'USI', 'SFEN', 'USEN'
 
 const inputText = ref('')
 const detectedEncoding = ref<string | null>(null)
+const detectedFileName = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const validationResult = ref<ValidationResult | null>(null)
 const parsedRecord = ref<ImmutableRecord | null>(null)
@@ -72,6 +73,7 @@ async function onFileSelected(event: Event) {
   const { text, encoding } = await readFileWithEncoding(file)
   inputText.value = text
   detectedEncoding.value = encoding
+  detectedFileName.value = file.name
   validationResult.value = null
   parsedRecord.value = null
 }
@@ -95,13 +97,34 @@ function runValidation() {
   }
 }
 
+function onTextInput() {
+  validationResult.value = null
+  parsedRecord.value = null
+  detectedEncoding.value = null
+  detectedFileName.value = null
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
 function clearAll() {
   inputText.value = ''
   detectedEncoding.value = null
+  detectedFileName.value = null
   validationResult.value = null
   parsedRecord.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
+
+const encodingWarning = computed(() => {
+  const name = detectedFileName.value
+  const enc = detectedEncoding.value
+  if (!name || !enc) return null
+  const ext = name.slice(name.lastIndexOf('.')).toLowerCase()
+  if ((ext === '.kif' || ext === '.ki2') && enc === 'UTF-8')
+    return `「${ext}」ファイルの文字コードは Shift_JIS が想定されますが、UTF-8 として読み込まれました。`
+  if ((ext === '.kifu' || ext === '.ki2u') && enc === 'Shift-JIS')
+    return `「${ext}」ファイルの文字コードは UTF-8 が想定されますが、Shift-JIS として読み込まれました。`
+  return null
+})
 
 const kakugyokuResult = computed(() => {
   const vr = validationResult.value
@@ -141,7 +164,7 @@ const conversionResults = computed(() => {
       v-model="inputText"
       rows="12"
       placeholder="KIF, KI2, CSA, JKF, USI, SFEN 形式の棋譜・局面データを貼り付けてください。"
-      @input="validationResult = null"
+      @input="onTextInput"
     />
     <div class="controls">
       <div class="file-area">
@@ -157,6 +180,7 @@ const conversionResults = computed(() => {
         <span v-if="detectedEncoding" class="encoding-badge">
           文字コード: {{ detectedEncoding }}
         </span>
+        <span v-if="encodingWarning" class="encoding-warning">{{ encodingWarning }}</span>
       </div>
       <div class="action-buttons">
         <button @click="clearAll">クリア</button>
@@ -255,6 +279,22 @@ const conversionResults = computed(() => {
 
 .file-label input[type="file"] {
   display: none;
+}
+
+.encoding-warning {
+  font-size: 0.8rem;
+  color: #b45309;
+  background-color: var(--color-warning-bg);
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .encoding-warning {
+    color: #f59e0b;
+    border-color: #78450a;
+  }
 }
 
 .encoding-badge {
