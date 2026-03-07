@@ -56,7 +56,8 @@ function hasHalfWidthColonSeparator(line: string): boolean {
   return halfIdx < fullIdx
 }
 
-const KIF_SEPARATOR = '手数----指手---------消費時間--'
+const KIF_SEPARATOR_WITH_TIME = '手数----指手---------消費時間--'
+const KIF_SEPARATOR_NO_TIME   = '手数----指手--'
 const MOVE_SYMBOL = /^[▲△▽]/
 
 // Valid piece names per Kakinoki Shogi specification
@@ -82,7 +83,7 @@ function isKnownKIFLine(l: string): boolean {
     l.startsWith('&') ||          // bookmark
     l.startsWith('変化：') ||     // branch
     l.startsWith('まで') ||       // result summary
-    l === KIF_SEPARATOR ||        // move separator
+    l === KIF_SEPARATOR_WITH_TIME || l === KIF_SEPARATOR_NO_TIME ||  // move separator
     /^ {0,3}\d/.test(l) ||        // move line
     l.includes('：') ||           // metadata or piece holdings (先手の持駒：etc.)
     l.startsWith('+') ||          // board border
@@ -116,9 +117,15 @@ export function checkKIF(text: string): KakugyokuCheckResult {
     items.push({ passed, weight, issue: passed < 1 ? issue : undefined })
   }
 
-  // 1. Separator line
-  const separatorIdx = lines.indexOf(KIF_SEPARATOR)
-  add(separatorIdx >= 0 ? 1 : 0, 2, `指し手セパレータ行「${KIF_SEPARATOR}」がありません`)
+  // 1. Separator line (two variants depending on whether time is recorded)
+  let separatorIdx = lines.indexOf(KIF_SEPARATOR_WITH_TIME)
+  const hasTimeColumn = separatorIdx >= 0
+  if (!hasTimeColumn) separatorIdx = lines.indexOf(KIF_SEPARATOR_NO_TIME)
+  add(
+    separatorIdx >= 0 ? 1 : 0,
+    2,
+    `指し手セパレータ行（「${KIF_SEPARATOR_WITH_TIME}」または「${KIF_SEPARATOR_NO_TIME}」）がありません`,
+  )
 
   // 3. Metadata section (before separator)
   const metaEnd = separatorIdx >= 0 ? separatorIdx : lines.length
@@ -211,6 +218,23 @@ export function checkKIF(text: string): KakugyokuCheckResult {
       const TIME_STRICT = /\([ 1-9]\d:\d{2}\/\d{2}:\d{2}:\d{2}\)$/
 
       const timedLines = moveLines.filter(l => TIME_LOOSE.test(l))
+      const untimedLines = moveLines.filter(l => !TIME_LOOSE.test(l))
+
+      // Move text width for lines WITHOUT time field: 12 display width
+      // (only meaningful when separator indicates no-time format)
+      if (!hasTimeColumn && untimedLines.length > 0) {
+        const badWidth = untimedLines.filter(l => {
+          const ch = l[5] ?? ''
+          if (ch !== '同' && (ch < '１' || ch > '９')) return false  // terminal, skip
+          return dispWidth(l.slice(5)) !== 12
+        })
+        add(
+          1 - badWidth.length / untimedLines.length,
+          3,
+          `指し手テキストが12表示幅になっていない行があります（${badWidth.length}/${untimedLines.length}行）`,
+        )
+      }
+
       if (timedLines.length > 0) {
         // Check time format
         const badTimeFmt = timedLines.filter(l => !TIME_STRICT.test(l.replace(/\+$/, '')))
