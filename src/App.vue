@@ -204,9 +204,9 @@ const conversionResults = computed(() => {
     </div>
   </div>
 
-  <!-- 検査結果セクション -->
+  <!-- ShogiHome 検査結果セクション -->
   <div v-if="validationResult" class="section">
-    <h2>検査結果</h2>
+    <h2>ShogiHome 検査結果</h2>
     <div v-if="validationResult.valid" class="result result--ok">
       <span class="result-icon">✓</span>
       <div>
