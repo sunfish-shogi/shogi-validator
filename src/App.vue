@@ -21,12 +21,18 @@ interface ValidationResult {
 
 const ALL_FORMATS: Format[] = ['KIF', 'KI2', 'CSA', 'JKF', 'USI', 'SFEN', 'USEN']
 
+interface CSAGameValidation {
+  valid: boolean
+  error: string | null
+}
+
 const inputText = ref('')
 const detectedEncoding = ref<string | null>(null)
 const detectedFileName = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const validationResult = ref<ValidationResult | null>(null)
 const parsedRecord = ref<ImmutableRecord | null>(null)
+const csaMultiGameResult = ref<CSAGameValidation[] | null>(null)
 
 function parseRecord(text: string, type: RecordFormatType): ImmutableRecord | Error {
   switch (type) {
@@ -77,6 +83,26 @@ async function onFileSelected(event: Event) {
   detectedFileName.value = file.name
   validationResult.value = null
   parsedRecord.value = null
+  csaMultiGameResult.value = null
+}
+
+function splitCSAGames(text: string): string[] {
+  const games: string[] = []
+  let current: string[] = []
+  for (const line of text.split(/\r?\n/)) {
+    if (line === '/') {
+      if (current.length > 0) {
+        games.push(current.join('\n'))
+        current = []
+      }
+    } else {
+      current.push(line)
+    }
+  }
+  if (current.some(l => l !== '' && !l.startsWith("'"))) {
+    games.push(current.join('\n'))
+  }
+  return games.filter(g => g.trim() !== '')
 }
 
 function runValidation() {
@@ -84,10 +110,26 @@ function runValidation() {
   if (!text.trim()) {
     validationResult.value = null
     parsedRecord.value = null
+    csaMultiGameResult.value = null
     return
   }
   const type = detectRecordFormat(text)
   const format = RecordFormatType[type] as Format
+
+  if (type === RecordFormatType.CSA) {
+    const games = splitCSAGames(text)
+    if (games.length > 1) {
+      validationResult.value = null
+      parsedRecord.value = null
+      csaMultiGameResult.value = games.map(g => {
+        const r = importCSA(g)
+        return r instanceof Error ? { valid: false, error: r.message } : { valid: true, error: null }
+      })
+      return
+    }
+  }
+
+  csaMultiGameResult.value = null
   const result = parseRecord(text, type)
   if (result instanceof Error) {
     parsedRecord.value = null
@@ -101,6 +143,7 @@ function runValidation() {
 function onTextInput() {
   validationResult.value = null
   parsedRecord.value = null
+  csaMultiGameResult.value = null
   detectedEncoding.value = null
   detectedFileName.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
@@ -112,6 +155,7 @@ function clearAll() {
   detectedFileName.value = null
   validationResult.value = null
   parsedRecord.value = null
+  csaMultiGameResult.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
@@ -141,6 +185,7 @@ const kakugyokuScoreClass = computed(() => {
   if (score >= 80) return 'kk-score--good'
   return 'kk-score--warn'
 })
+
 
 const csaResult = computed(() => {
   const vr = validationResult.value
@@ -221,6 +266,26 @@ const conversionResults = computed(() => {
       <div>
         <div class="result-title">エラー</div>
         <div class="result-detail">{{ validationResult.error }}</div>
+      </div>
+    </div>
+    <p class="validation-note">※ 全ての問題を検出できることを保証するものではありません。</p>
+  </div>
+
+  <!-- CSA 複数棋譜セクション -->
+  <div v-if="csaMultiGameResult" class="section">
+    <h2>ShogiHome 検査結果</h2>
+    <p class="multi-game-note">CSA ファイルに {{ csaMultiGameResult.length }} つの棋譜が含まれています。</p>
+    <div
+      v-for="(game, i) in csaMultiGameResult"
+      :key="i"
+      class="result"
+      :class="game.valid ? 'result--ok' : 'result--error'"
+      style="margin-top: 0.5rem;"
+    >
+      <span class="result-icon">{{ game.valid ? '✓' : '✗' }}</span>
+      <div>
+        <div class="result-title">棋譜 {{ i + 1 }}: {{ game.valid ? '正常' : 'エラー' }}</div>
+        <div v-if="game.error" class="result-detail">{{ game.error }}</div>
       </div>
     </div>
     <p class="validation-note">※ 全ての問題を検出できることを保証するものではありません。</p>
@@ -436,6 +501,12 @@ const conversionResults = computed(() => {
   margin: 0;
   font-size: 0.875rem;
   color: var(--color-success);
+}
+
+.multi-game-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
 }
 
 .validation-note {
