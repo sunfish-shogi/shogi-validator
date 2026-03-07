@@ -223,6 +223,7 @@ const conversionResults = computed(() => {
         <div class="result-detail">{{ validationResult.error }}</div>
       </div>
     </div>
+    <p class="validation-note">※ 全ての問題を検出できることを保証するものではありません。</p>
   </div>
 
   <!-- 柿木将棋スタイル評価セクション -->
@@ -435,6 +436,12 @@ const conversionResults = computed(() => {
   margin: 0;
   font-size: 0.875rem;
   color: var(--color-success);
+}
+
+.validation-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 .kk-note {
