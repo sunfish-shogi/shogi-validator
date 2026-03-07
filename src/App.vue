@@ -215,12 +215,13 @@ const conversionResults = computed(() => {
     <h2>柿木将棋スタイル評価</h2>
     <div class="kk-score-row">
       <span class="kk-score" :class="kakugyokuScoreClass">{{ kakugyokuResult.score }}%</span>
-      <span class="kk-score-label">柿木将棋との一致度</span>
+      <span class="kk-score-label">柿木将棋との一致度（参考）</span>
     </div>
     <ul v-if="kakugyokuResult.issues.length > 0" class="kk-issues">
       <li v-for="(issue, i) in kakugyokuResult.issues" :key="i">{{ issue }}</li>
     </ul>
-    <p v-else class="kk-ok">柿木将棋の出力スタイルと完全に一致しています。</p>
+    <p v-else class="kk-ok">検査項目の範囲では差異は見つかりませんでした。</p>
+    <p class="kk-note">※ 限られた検査項目に基づく参考値です。見落としや誤検出が生じる場合があります。</p>
   </div>
 
   <!-- 変換結果セクション -->
@@ -405,6 +406,12 @@ const conversionResults = computed(() => {
   margin: 0;
   font-size: 0.875rem;
   color: var(--color-success);
+}
+
+.kk-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 footer {
