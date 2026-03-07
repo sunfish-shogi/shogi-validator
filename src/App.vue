@@ -9,6 +9,7 @@ import {
 } from 'tsshogi'
 import ConversionResult from './components/ConversionResult.vue'
 import { checkKIF, checkKI2 } from './kakinoki-checker'
+import { checkCSA } from './csa-checker'
 
 type Format = 'KIF' | 'KI2' | 'CSA' | 'JKF' | 'USI' | 'SFEN' | 'USEN'
 
@@ -141,6 +142,20 @@ const kakugyokuScoreClass = computed(() => {
   return 'kk-score--warn'
 })
 
+const csaResult = computed(() => {
+  const vr = validationResult.value
+  if (!vr?.valid) return null
+  if (vr.format === 'CSA') return checkCSA(inputText.value)
+  return null
+})
+
+const csaScoreClass = computed(() => {
+  const score = csaResult.value?.score ?? 0
+  if (score === 100) return 'kk-score--perfect'
+  if (score >= 80) return 'kk-score--good'
+  return 'kk-score--warn'
+})
+
 const conversionResults = computed(() => {
   const record = parsedRecord.value
   if (!record) return []
@@ -221,6 +236,20 @@ const conversionResults = computed(() => {
       <li v-for="(issue, i) in kakugyokuResult.issues" :key="i">{{ issue }}</li>
     </ul>
     <p v-else class="kk-ok">検査項目の範囲では差異は見つかりませんでした。</p>
+    <p class="kk-note">※ 限られた検査項目に基づく参考値です。見落としや誤検出が生じる場合があります。</p>
+  </div>
+
+  <!-- CSA 仕様検査セクション -->
+  <div v-if="csaResult" class="section">
+    <h2>CSA 標準形式検査</h2>
+    <div class="kk-score-row">
+      <span class="kk-score" :class="csaScoreClass">{{ csaResult.score }}%</span>
+      <span class="kk-score-label">CSA 仕様への準拠度（参考）</span>
+    </div>
+    <ul v-if="csaResult.issues.length > 0" class="kk-issues">
+      <li v-for="(issue, i) in csaResult.issues" :key="i">{{ issue }}</li>
+    </ul>
+    <p v-else class="kk-ok">検査項目の範囲では問題は見つかりませんでした。</p>
     <p class="kk-note">※ 限られた検査項目に基づく参考値です。見落としや誤検出が生じる場合があります。</p>
   </div>
 
