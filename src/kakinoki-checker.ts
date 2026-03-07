@@ -59,6 +59,22 @@ function hasHalfWidthColonSeparator(line: string): boolean {
 const KIF_SEPARATOR = '手数----指手---------消費時間--'
 const MOVE_SYMBOL = /^[▲△▽]/
 
+// Valid piece names per Kakinoki Shogi specification
+const VALID_PIECES = new Set([
+  '歩', '香', '桂', '銀', '金', '角', '飛', '玉',  // standard
+  'と', '成香', '成桂', '成銀', '馬', '龍', '竜',   // promoted (龍/竜 both valid)
+])
+
+// Extract piece name from move text starting at given position.
+// Returns the piece string if valid, undefined if unknown, null if not a piece position.
+function extractPiece(text: string, pos: number): string | undefined {
+  const two = text.slice(pos, pos + 2)
+  if (VALID_PIECES.has(two)) return two
+  const one = text.slice(pos, pos + 1)
+  if (VALID_PIECES.has(one)) return one
+  return undefined
+}
+
 function isKnownKIFLine(l: string): boolean {
   return (
     l.startsWith('#') ||          // header/comment
@@ -143,6 +159,36 @@ export function checkKIF(text: string): KakugyokuCheckResult {
         3,
         `手数フィールドが4文字右詰めになっていない行があります（${badNum.length}/${moveLines.length}行）`,
       )
+
+      // Piece name validation
+      // KIF move text (after 5-char prefix) starts with 2-char destination (full-width digit pair or 同　),
+      // then the piece name at position 2. Terminal moves (投了 etc.) start with non-digit/non-同.
+      let totalPieceMoves = 0
+      let badPieceCount = 0
+      const badPieceNames = new Set<string>()
+      for (const l of moveLines) {
+        const text = l.slice(5)
+        const ch = text[0] ?? ''
+        if (ch !== '同' && (ch < '１' || ch > '９')) continue
+        totalPieceMoves++
+        if (extractPiece(text, 2) === undefined) {
+          badPieceCount++
+          // Extract only full-width chars (stop before half-width chars like '(' or space)
+          let name = ''
+          for (let i = 2; i < text.length && name.length < 2; i++) {
+            if (!isWide(text.codePointAt(i)!)) break
+            name += text[i]
+          }
+          badPieceNames.add(`「${name || '?'}」`)
+        }
+      }
+      if (totalPieceMoves > 0) {
+        add(
+          1 - badPieceCount / totalPieceMoves,
+          3,
+          `不正な駒名が含まれる指し手があります: ${[...badPieceNames].join('、')}`,
+        )
+      }
 
       // 同 must be followed by full-width space
       const douLines = moveLines.filter(l => /同/.test(l))
@@ -313,6 +359,48 @@ export function checkKI2(text: string): KakugyokuCheckResult {
         1 - badDou.length / douMoveTexts.length,
         2,
         `「同」の後のスペースが正しくない指し手があります（${badDou.length}/${douMoveTexts.length}個）`,
+      )
+    }
+  }
+
+  // Piece name validation for KI2 tokens
+  // For 同 without space: piece is at pos 1 (同{piece}); with space: pos 2 (同　{piece}).
+  // For normal destination (2 full-width chars): piece is at pos 2.
+  if (moveLines.length > 0) {
+    let totalKI2Pieces = 0
+    let badKI2PieceCount = 0
+    const badKI2PieceNames = new Set<string>()
+    for (const line of moveLines) {
+      const tokens = line.split(/ +/).filter(t => t.length > 0)
+      for (const token of tokens) {
+        if (!MOVE_SYMBOL.test(token)) continue
+        const mt = token.slice(1)  // remove ▲/△/▽
+        const ch = mt[0] ?? ''
+        let pos: number
+        if (ch === '同') {
+          pos = mt[1] === '　' ? 2 : 1
+        } else if (ch >= '１' && ch <= '９') {
+          pos = 2
+        } else {
+          continue  // terminal or unknown, skip
+        }
+        totalKI2Pieces++
+        if (extractPiece(mt, pos) === undefined) {
+          badKI2PieceCount++
+          let name = ''
+          for (let i = pos; i < mt.length && name.length < 2; i++) {
+            if (!isWide(mt.codePointAt(i)!)) break
+            name += mt[i]
+          }
+          badKI2PieceNames.add(`「${name || '?'}」`)
+        }
+      }
+    }
+    if (totalKI2Pieces > 0) {
+      add(
+        1 - badKI2PieceCount / totalKI2Pieces,
+        3,
+        `不正な駒名が含まれる指し手があります: ${[...badKI2PieceNames].join('、')}`,
       )
     }
   }
