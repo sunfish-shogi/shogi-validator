@@ -59,6 +59,39 @@ function hasHalfWidthColonSeparator(line: string): boolean {
 const KIF_SEPARATOR = '手数----指手---------消費時間--'
 const MOVE_SYMBOL = /^[▲△▽]/
 
+function isKnownKIFLine(l: string): boolean {
+  return (
+    l.startsWith('#') ||          // header/comment
+    l.startsWith('*') ||          // user comment
+    l.startsWith('&') ||          // bookmark
+    l.startsWith('変化：') ||     // branch
+    l.startsWith('まで') ||       // result summary
+    l === KIF_SEPARATOR ||        // move separator
+    /^ {0,3}\d/.test(l) ||        // move line
+    l.includes('：') ||           // metadata or piece holdings (先手の持駒：etc.)
+    l.startsWith('+') ||          // board border
+    l.startsWith('|') ||          // board row
+    /^ +[１-９]/.test(l) ||       // board column header
+    /^[後先上下]手番$/.test(l)    // turn indicator for mid-game start
+  )
+}
+
+function isKnownKI2Line(l: string): boolean {
+  return (
+    l.startsWith('#') ||
+    l.startsWith('*') ||
+    l.startsWith('&') ||
+    l.startsWith('変化：') ||
+    l.startsWith('まで') ||
+    MOVE_SYMBOL.test(l) ||        // move line
+    l.includes('：') ||
+    l.startsWith('+') ||
+    l.startsWith('|') ||
+    /^ +[１-９]/.test(l) ||
+    /^[後先上下]手番$/.test(l)
+  )
+}
+
 export function checkKIF(text: string): KakugyokuCheckResult {
   const lines = text.split(/\r?\n/)
   const items: CheckItem[] = []
@@ -186,6 +219,17 @@ export function checkKIF(text: string): KakugyokuCheckResult {
     }
   }
 
+  // Unrecognized lines
+  const nonEmptyLines = lines.filter(l => l !== '')
+  const unknownKIF = nonEmptyLines.filter(l => !isKnownKIFLine(l))
+  if (nonEmptyLines.length > 0) {
+    add(
+      1 - unknownKIF.length / nonEmptyLines.length,
+      2,
+      `認識できない行があります（${unknownKIF.length}/${nonEmptyLines.length}行）`,
+    )
+  }
+
   // 6. Trailing blank line
   add(lines[lines.length - 1] === '' ? 1 : 0, 1, 'ファイルの末尾が空行ではありません')
 
@@ -271,6 +315,17 @@ export function checkKI2(text: string): KakugyokuCheckResult {
         `「同」の後のスペースが正しくない指し手があります（${badDou.length}/${douMoveTexts.length}個）`,
       )
     }
+  }
+
+  // Unrecognized lines
+  const nonEmptyLinesKI2 = lines.filter(l => l !== '')
+  const unknownKI2 = nonEmptyLinesKI2.filter(l => !isKnownKI2Line(l))
+  if (nonEmptyLinesKI2.length > 0) {
+    add(
+      1 - unknownKI2.length / nonEmptyLinesKI2.length,
+      2,
+      `認識できない行があります（${unknownKI2.length}/${nonEmptyLinesKI2.length}行）`,
+    )
   }
 
   // 6. Trailing blank line
