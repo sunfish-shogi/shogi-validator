@@ -21,6 +21,8 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build && node scripts/report-license.mjs",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:ui": "vitest --ui --coverage",
     "license": "node scripts/report-license.mjs"
   },
   "dependencies": {
@@ -31,10 +33,13 @@
     "@types/license-checker": "^25.0.6",
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.2",
+    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/ui": "^4.0.18",
     "@vue/tsconfig": "^0.8.1",
     "license-checker": "^25.0.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
+    "vitest": "^4.0.18",
     "vue-tsc": "^3.1.5"
   }
 }
