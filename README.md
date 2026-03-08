@@ -1,5 +1,7 @@
 # 将棋棋譜バリデーター
 
+[![Test](https://github.com/sunfish-shogi/shogi-validator/actions/workflows/test.yml/badge.svg)](https://github.com/sunfish-shogi/shogi-validator/actions/workflows/test.yml)
+
 Webブラウザで動作する将棋の棋譜データ・局面データの検査・変換ツールです。
 
 ## 機能
