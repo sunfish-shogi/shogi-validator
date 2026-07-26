@@ -1,0 +1,15 @@
+---
+name: 質問 / Question
+about: 使い方や設計、開発などの質問
+title: ''
+labels: question
+assignees: sunfish-shogi
+
+---
+
+## Checklist
+
+- [ ] understand [CONTRIBUTING.md](https://github.com/sunfish-shogi/shogi-validator/blob/main/CONTRIBUTING.md)
+- [ ] I am human
+
+## 質問 / Question
